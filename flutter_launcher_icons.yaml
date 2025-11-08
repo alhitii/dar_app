@@ -1,0 +1,25 @@
+# تكوين أيقونة التطبيق
+# لإنشاء الأيقونات: flutter pub run flutter_launcher_icons
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  
+  # أيقونة عادية (تظهر على جميع إصدارات Android)
+  image_path: "assets/icon_foreground.png"
+  
+  # Adaptive Icon (لـ Android 8.0 وأحدث)
+  adaptive_icon_foreground: "assets/icon_foreground.png"
+  adaptive_icon_background: "#FFFFFF"  # لون خلفية بسيط
+  
+  # إعدادات إضافية
+  min_sdk_android: 21  # Android 5.0 كحد أدنى
+  
+  # تفعيل إنشاء أحجام مختلفة
+  android_round: true  # أيقونة دائرية للأجهزة التي تدعمها
+  
+  # ملاحظات:
+  # - الأيقونة يجب أن تكون 1024x1024 بكسل
+  # - يجب أن يكون هناك هوامش 20% على الأقل من كل جانب
+  # - Android يقص 33% من الحواف في بعض الحالات
+  # - استخدام خلفية بسيطة (لون) أفضل من صورة

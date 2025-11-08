@@ -1,0 +1,155 @@
+workflows:
+  ios-workflow:
+    name: iOS Workflow
+    max_build_duration: 60
+    environment:
+      vars:
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install Flutter dependencies
+        script: |
+          flutter packages pub get
+      - name: Flutter build iOS (no sign)
+        script: |
+          flutter build ios --release --no-codesign
+    artifacts:
+      - build/ios/iphoneos/*.app
+      - build/ios/iphoneos/Runner.app/**
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com  # غيّر هذا لبريدك
+        notify:
+          success: true
+          failure: true
+
+  # Workflow مع توقيع للنشر على App Store
+  ios-release-workflow:
+    name: iOS Release (App Store)
+    max_build_duration: 120
+    environment:
+      vars:
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      # يجب إضافة هذه في Codemagic Settings
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.yourcompany.madrasah  # غيّر هذا
+    scripts:
+      - name: Set up code signing settings
+        script: |
+          keychain initialize
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Use system default keychain
+        script: |
+          keychain add-certificates
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Install Flutter dependencies
+        script: |
+          flutter packages pub get
+      - name: Install CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Flutter build IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com  # غيّر هذا لبريدك
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true  # رفع تلقائي لـ TestFlight
+
+  # Workflow للـ Android (للمقارنة)
+  android-workflow:
+    name: Android Workflow
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      - name: Install Flutter dependencies
+        script: |
+          flutter packages pub get
+      - name: Flutter build APK
+        script: |
+          flutter build apk --release
+    artifacts:
+      - build/app/outputs/**/*.apk
+      - build/app/outputs/**/mapping.txt
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+
+  # Workflow للـ Web
+  web-workflow:
+    name: Web Workflow
+    max_build_duration: 30
+    environment:
+      flutter: stable
+    scripts:
+      - name: Install Flutter dependencies
+        script: |
+          flutter packages pub get
+      - name: Flutter build Web
+        script: |
+          flutter build web --release
+    artifacts:
+      - build/web/**
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
+
+# ملاحظات الاستخدام:
+# 
+# 1. للاختبار بدون توقيع:
+#    استخدم: ios-workflow
+#
+# 2. للنشر على App Store:
+#    استخدم: ios-release-workflow
+#    متطلبات:
+#    - Apple Developer Account
+#    - App Store Connect API Key
+#    - Certificates & Provisioning Profiles
+#
+# 3. لتخصيص الإعدادات:
+#    - غيّر bundle_identifier
+#    - غيّر البريد الإلكتروني
+#    - أضف environment variables في Codemagic
+#
+# 4. للتشغيل:
+#    - ارفع هذا الملف للمشروع
+#    - اربط Codemagic بـ GitHub/GitLab
+#    - اختر الـ workflow المناسب
+#    - شغّل البناء

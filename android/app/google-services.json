@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "530557070947",
+    "project_id": "madrasa-570c9",
+    "storage_bucket": "madrasa-570c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:530557070947:android:00943dc5171792cfb39256",
+        "android_client_info": {
+          "package_name": "com.madrash.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAl1_AU6LP5guWoUvqhirG5x5h2W05ZxBU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

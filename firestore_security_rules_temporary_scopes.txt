@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد النسخ الاحتياطية للمعلمين
+    // ═════════════════════════════════════════════════════════════
+    
+    match /backups_users/{userId} {
+      // القراءة: الإدارة فقط
+      allow read: if request.auth != null && isAdmin();
+      
+      // الكتابة: الإدارة فقط أو النظام
+      allow create: if request.auth != null && isAdmin();
+      allow update, delete: if request.auth != null && isAdmin();
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد سجلات العمليات
+    // ═════════════════════════════════════════════════════════════
+    
+    match /logs/{logId} {
+      // القراءة: الإدارة فقط
+      allow read: if request.auth != null && isAdmin();
+      
+      // الإنشاء: أي مستخدم مصادق (للنظام)
+      allow create: if request.auth != null;
+      
+      // لا يمكن تعديل أو حذف السجلات
+      allow update, delete: if false;
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد إعدادات Feature Flags
+    // ═════════════════════════════════════════════════════════════
+    
+    match /settings/{docId} {
+      // القراءة: جميع المستخدمين المصادقين
+      allow read: if request.auth != null;
+      
+      // الكتابة: الإدارة فقط
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد المستخدمين (المُحدّثة)
+    // ═════════════════════════════════════════════════════════════
+    
+    match /users/{userId} {
+      // القراءة: جميع المستخدمين
+      allow read: if request.auth != null;
+      
+      // الكتابة: الإدارة فقط
+      // مع حماية إضافية للحقول الحساسة
+      allow update: if request.auth != null 
+                    && isAdmin()
+                    && validateUserUpdate();
+      
+      allow create, delete: if request.auth != null && isAdmin();
+    }
+    
+    match /users_emails/{email} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد المواد والصفوف والشعب (للمرجعية)
+    // ═════════════════════════════════════════════════════════════
+    
+    match /subjects/{subjectId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    match /classes/{classId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    match /sections/{sectionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // دوال مساعدة
+    // ═════════════════════════════════════════════════════════════
+    
+    // التحقق من أن المستخدم إدارة
+    function isAdmin() {
+      return request.auth != null 
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // التحقق من صحة تحديث المستخدم
+    function validateUserUpdate() {
+      let data = request.resource.data;
+      
+      // التحقق من وجود scopesTemporary فقط إذا كانت true أو محذوفة
+      return !data.keys().hasAny(['scopesTemporary']) 
+             || data.scopesTemporary == true 
+             || !('scopesTemporary' in data);
+    }
+    
+    // التحقق من أن المستخدم معلم
+    function isTeacher() {
+      return request.auth != null 
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    // التحقق من وجود صلاحيات مؤقتة
+    function hasTemporaryScopes(userId) {
+      let userData = get(/databases/$(database)/documents/users/$(userId)).data;
+      return 'scopesTemporary' in userData && userData.scopesTemporary == true;
+    }
+  }
+}
+
+// ═════════════════════════════════════════════════════════════
+// ملاحظات الأمان:
+// ═════════════════════════════════════════════════════════════
+//
+// 1. backups_users: محمية تماماً - الإدارة فقط
+//    - منع القراءة العامة لحماية البيانات الحساسة
+//    - منع التعديل من غير الإدارة
+//
+// 2. logs: القراءة للإدارة، الإنشاء للنظام
+//    - لا يمكن تعديل أو حذف السجلات (audit trail)
+//    - الإنشاء متاح لتسجيل العمليات
+//
+// 3. settings/features: القراءة للجميع، الكتابة للإدارة
+//    - المستخدمون يمكنهم قراءة Feature Flags
+//    - فقط الإدارة يمكنها تغييرها
+//
+// 4. users: حماية إضافية للحقول الحساسة
+//    - validateUserUpdate() يمنع التلاعب بـ scopesTemporary
+//    - فقط الإدارة يمكنها التعديل
+//
+// 5. subjects/classes/sections: قراءة للجميع، كتابة للإدارة
+//    - ضرورية لعمل نظام التوسيع
+//
+// ═════════════════════════════════════════════════════════════
+// تطبيق القواعد:
+// ═════════════════════════════════════════════════════════════
+//
+// firebase deploy --only firestore:rules
+//
+// ═════════════════════════════════════════════════════════════
+// اختبار القواعد:
+// ═════════════════════════════════════════════════════════════
+//
+// 1. في Firebase Console → Firestore → Rules
+// 2. استخدم Rules Playground
+// 3. اختبر السيناريوهات:
+//    - قراءة backups_users كمعلم → يجب أن ترفض
+//    - قراءة backups_users كإدارة → يجب أن تنجح
+//    - كتابة logs كمعلم → يجب أن تنجح
+//    - تعديل logs → يجب أن ترفض
+//
+// ═════════════════════════════════════════════════════════════

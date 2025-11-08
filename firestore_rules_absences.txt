@@ -1,0 +1,34 @@
+// 🔒 قواعد Firestore لـ collection absences
+// أضف هذه القاعدة إلى firestore.rules
+
+// داخل: match /databases/{database}/documents {
+
+    // قواعد collection الغياب
+    match /absences/{absenceId} {
+      // القراءة: الطالب نفسه أو الإدارة
+      allow read: if request.auth != null && 
+                    (resource.data.studentUid == request.auth.uid || 
+                     isAdmin());
+      
+      // الكتابة: فقط الإدارة
+      allow write: if isAdmin();
+    }
+    
+    // قواعد collection إشعارات الإدارة
+    match /notifications_admin/{notifId} {
+      // القراءة: الطالب المستهدف أو الإدارة
+      allow read: if request.auth != null && 
+                    (resource.data.studentUid == request.auth.uid || 
+                     resource.data.target == 'students' ||
+                     isAdmin());
+      
+      // الكتابة: فقط الإدارة
+      allow write: if isAdmin();
+    }
+
+// }
+
+// 📝 ملاحظات:
+// 1. الطالب يمكنه قراءة غيابه فقط
+// 2. فقط الإدارة يمكنها إضافة/تعديل/حذف سجلات الغياب
+// 3. الإشعارات تظهر للطالب المستهدف فقط

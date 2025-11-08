@@ -1,0 +1,146 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد أمان الواجبات - منع المعلم من إرسال واجب خارج مواده
+    // ═════════════════════════════════════════════════════════════
+    
+    match /homework/{homeworkId} {
+      // قراءة الواجبات
+      allow read: if request.auth != null;
+      
+      // إنشاء واجب - فقط المعلمون
+      allow create: if request.auth != null 
+                    && isTeacher()
+                    && teacherHasSubject(request.resource.data.subjectId);
+      
+      // تحديث الواجب - فقط صاحب الواجب
+      allow update: if request.auth != null 
+                    && resource.data.teacherId == request.auth.uid
+                    && teacherHasSubject(request.resource.data.subjectId);
+      
+      // حذف الواجب - فقط صاحبه أو الإدارة
+      allow delete: if request.auth != null 
+                    && (resource.data.teacherId == request.auth.uid || isAdmin());
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد المستخدمين
+    // ═════════════════════════════════════════════════════════════
+    
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    match /teachers/{teacherId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    match /students/{studentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    match /users_emails/{email} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد المواد
+    // ═════════════════════════════════════════════════════════════
+    
+    match /subjects/{subjectId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // قواعد الإشعارات
+    // ═════════════════════════════════════════════════════════════
+    
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && isAdmin();
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // سجلات الأمان
+    // ═════════════════════════════════════════════════════════════
+    
+    match /security_logs/{logId} {
+      allow read: if request.auth != null && isAdmin();
+      allow create: if request.auth != null;
+      allow update, delete: if false; // لا يمكن تعديل السجلات
+    }
+    
+    // ═════════════════════════════════════════════════════════════
+    // دوال مساعدة
+    // ═════════════════════════════════════════════════════════════
+    
+    // التحقق من أن المستخدم إدارة
+    function isAdmin() {
+      return request.auth != null 
+             && getUserRole() == 'admin';
+    }
+    
+    // التحقق من أن المستخدم معلم
+    function isTeacher() {
+      return request.auth != null 
+             && getUserRole() == 'teacher';
+    }
+    
+    // التحقق من أن المستخدم طالب
+    function isStudent() {
+      return request.auth != null 
+             && getUserRole() == 'student';
+    }
+    
+    // الحصول على دور المستخدم
+    function getUserRole() {
+      let userEmail = request.auth.token.email;
+      return get(/databases/$(database)/documents/users_emails/$(userEmail)).data.role;
+    }
+    
+    // التحقق من أن المعلم لديه صلاحية على هذه المادة
+    function teacherHasSubject(subjectId) {
+      let userEmail = request.auth.token.email;
+      let userData = get(/databases/$(database)/documents/users_emails/$(userEmail)).data;
+      
+      // التحقق من وجود subjects في بيانات المستخدم
+      return userData.subjects != null 
+             && subjectId in userData.subjects;
+    }
+    
+    // التحقق من أن المعلم لديه صلاحية على شعبة معينة
+    function teacherHasSection(section) {
+      let userEmail = request.auth.token.email;
+      let userData = get(/databases/$(database)/documents/users_emails/$(userEmail)).data;
+      
+      return userData.sections != null 
+             && section in userData.sections;
+    }
+  }
+}
+
+// ═════════════════════════════════════════════════════════════
+// ملاحظات مهمة:
+// ═════════════════════════════════════════════════════════════
+//
+// 1. teacherHasSubject() تتحقق من وجود المادة في قائمة مواد المعلم
+// 2. يتم منع إنشاء واجب إذا لم تكن المادة ضمن subjects المعلم
+// 3. يتم تسجيل محاولات غير مخولة في security_logs
+// 4. الإدارة لديها صلاحية كاملة
+// 5. المعلم يمكنه فقط تعديل/حذف واجباته الخاصة
+//
+// ═════════════════════════════════════════════════════════════
+// نشر القواعد:
+// ═════════════════════════════════════════════════════════════
+//
+// firebase deploy --only firestore:rules
+//
+// ═════════════════════════════════════════════════════════════

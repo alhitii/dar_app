@@ -1,0 +1,6 @@
+@echo off
+echo Running Windsurf cleanup...
+dart .windsurf/cleanup_project.dart
+
+echo Running Windsurf post-build update...
+dart .windsurf/post_build_update.dart

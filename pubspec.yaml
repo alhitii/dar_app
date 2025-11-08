@@ -1,0 +1,62 @@
+name: madrasah
+description: "تطبيق مدرسة دار السلام للبنات"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  
+  # ✅ المكتبات المطلوبة حسب المواصفات
+  get: ^4.7.2
+  flutter_screenutil: ^5.9.3
+  google_fonts: ^6.2.1
+  dynamic_color: ^1.7.0
+  
+  # ✅ Firebase حسب المواصفات (محدثة)
+  firebase_core: ^3.15.2
+  firebase_auth: ^5.7.0
+  cloud_firestore: ^5.6.12
+  firebase_messaging: ^15.2.10
+  flutter_local_notifications: ^17.2.4
+  
+  # مكتبات إضافية
+  cloud_functions: ^5.6.2
+  shared_preferences: ^2.2.3
+  http: ^1.2.0
+  intl: ^0.20.2
+  file_picker: ^8.1.4
+  path_provider: ^2.1.4
+  csv: ^6.0.0
+  url_launcher: ^6.3.1
+  flutter_linkify: ^6.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/subjects_data.json
+    - assets/icon_foreground.png
+    - assets/icon_background.png
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: false
+  image_path: "assets/icon_foreground.png"
+  # Adaptive icon settings (Android 8.0+)
+  adaptive_icon_foreground: "assets/icon_foreground.png"
+  adaptive_icon_background: "#FFFFFF"  # خلفية بيضاء بسيطة بدلاً من صورة
+  # للتأكد من أن الأيقونة لا تُقص، يمكن تصغيرها
+  min_sdk_android: 21  # الحد الأدنى Android 5.0
