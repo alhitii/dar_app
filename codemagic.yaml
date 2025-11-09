@@ -13,9 +13,20 @@ workflows:
       - name: Install Flutter dependencies
         script: |
           flutter packages pub get
+
+      - name: Ensure Firebase plist exists
+        script: |
+          if [ ! -f "ios/Runner/GoogleService-Info.plist" ]; then
+            echo "❌ Missing GoogleService-Info.plist!"
+            exit 1
+          fi
+          echo "✅ GoogleService-Info.plist found."
+
       - name: Flutter build iOS (no sign)
         script: |
+          flutter clean
           flutter build ios --release --no-codesign
+
     artifacts:
       - build/ios/iphoneos/*.app
       - build/ios/iphoneos/Runner.app/**
@@ -27,7 +38,6 @@ workflows:
           success: true
           failure: true
 
-  # Workflow مع توقيع للنشر على App Store
   ios-release-workflow:
     name: iOS Release (App Store)
     max_build_duration: 120
@@ -38,35 +48,41 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
-      # يجب إضافة هذه في Codemagic Settings
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.yourcompany.madrasah  # غيّر هذا
+        bundle_identifier: com.madrasah.madrasah  # تأكد أنه نفس الموجود في Firebase
     scripts:
       - name: Set up code signing settings
         script: |
           keychain initialize
+
       - name: Fetch signing files
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
+
       - name: Use system default keychain
         script: |
           keychain add-certificates
+
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
+
       - name: Install Flutter dependencies
         script: |
           flutter packages pub get
+
       - name: Install CocoaPods dependencies
         script: |
           find . -name "Podfile" -execdir pod install \;
+
       - name: Flutter build IPA
         script: |
           flutter build ipa --release \
             --export-options-plist=/Users/builder/export_options.plist
+
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
@@ -82,9 +98,8 @@ workflows:
         api_key: $APP_STORE_CONNECT_PRIVATE_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true  # رفع تلقائي لـ TestFlight
+        submit_to_testflight: true
 
-  # Workflow للـ Android (للمقارنة)
   android-workflow:
     name: Android Workflow
     max_build_duration: 60
@@ -94,9 +109,12 @@ workflows:
       - name: Install Flutter dependencies
         script: |
           flutter packages pub get
+
       - name: Flutter build APK
         script: |
+          flutter clean
           flutter build apk --release
+
     artifacts:
       - build/app/outputs/**/*.apk
       - build/app/outputs/**/mapping.txt
@@ -108,7 +126,6 @@ workflows:
           success: true
           failure: true
 
-  # Workflow للـ Web
   web-workflow:
     name: Web Workflow
     max_build_duration: 30
@@ -118,9 +135,12 @@ workflows:
       - name: Install Flutter dependencies
         script: |
           flutter packages pub get
+
       - name: Flutter build Web
         script: |
+          flutter clean
           flutter build web --release
+
     artifacts:
       - build/web/**
     publishing:
@@ -132,24 +152,7 @@ workflows:
           failure: true
 
 # ملاحظات الاستخدام:
-# 
-# 1. للاختبار بدون توقيع:
-#    استخدم: ios-workflow
-#
-# 2. للنشر على App Store:
-#    استخدم: ios-release-workflow
-#    متطلبات:
-#    - Apple Developer Account
-#    - App Store Connect API Key
-#    - Certificates & Provisioning Profiles
-#
-# 3. لتخصيص الإعدادات:
-#    - غيّر bundle_identifier
-#    - غيّر البريد الإلكتروني
-#    - أضف environment variables في Codemagic
-#
-# 4. للتشغيل:
-#    - ارفع هذا الملف للمشروع
-#    - اربط Codemagic بـ GitHub/GitLab
-#    - اختر الـ workflow المناسب
-#    - شغّل البناء
+# 1. للاختبار بدون توقيع استخدم ios-workflow.
+# 2. للنشر على App Store استخدم ios-release-workflow.
+# 3. تأكد من مطابقة bundle_identifier مع Firebase.
+# 4. غيّر البريد الإلكتروني ليرسل التنبيهات لك.
